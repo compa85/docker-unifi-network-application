@@ -244,13 +244,14 @@ Containers are configured using parameters passed at runtime (such as those abov
 | `-e TZ=Etc/UTC` | specify a timezone to use, see this [list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List). |
 | `-e MONGO_USER=unifi` | Mongodb Username. Only evaluated on first run. **Special characters must be [url encoded](https://en.wikipedia.org/wiki/Percent-encoding)**. |
 | `-e MONGO_PASS=` | Mongodb Password. Only evaluated on first run. **Special characters must be [url encoded](https://en.wikipedia.org/wiki/Percent-encoding)**. |
-| `-e MONGO_HOST=unifi-db` | Mongodb Hostname. Only evaluated on first run. |
-| `-e MONGO_PORT=27017` | Mongodb Port. Only evaluated on first run. |
+| `-e MONGO_HOST=unifi-db` | Mongodb Hostname. Can contain multiple hostnames separated by commas. Only evaluated on first run. |
+| `-e MONGO_PORT=27017` | Mongodb Port. Can contain multiple ports separated by commas. Only evaluated on first run. |
 | `-e MONGO_DBNAME=unifi` | Mongodb Database Name (stats DB is automatically suffixed with `_stat`). Only evaluated on first run. |
 | `-e MONGO_AUTHSOURCE=admin` | Mongodb [authSource](https://www.mongodb.com/docs/manual/reference/connection-string/#mongodb-urioption-urioption.authSource). For Atlas set to `admin`. Only evaluated on first run. |
 | `-e MEM_LIMIT=1024` | Optionally change the Java memory limit (in Megabytes). Set to `default` to reset to default |
 | `-e MEM_STARTUP=1024` | Optionally change the Java initial/minimum memory (in Megabytes). Set to `default` to reset to default |
 | `-e MONGO_TLS=` | Mongodb enable [TLS](https://www.mongodb.com/docs/manual/reference/connection-string/#mongodb-urioption-urioption.tls). Only evaluated on first run. |
+| `-e MONGO_REPLICA_SET_NAME` | Specifies the name of the MongoDB replica set to connect to. Only when multiple hosts are defined. |
 | `-v /config` | Persistent config files |
 
 ## Environment variables from files (Docker secrets)

@@ -32,22 +32,43 @@ if [[ ! -e /config/data/system.properties ]]; then
         echo "*** No MONGO_HOST set, cannot configure database settings. ***"
         sleep infinity
     else
-        echo "*** Waiting for MONGO_HOST ${MONGO_HOST} to be reachable. ***"
-        DBCOUNT=0
-        while true; do
-            if nc -w1 "${MONGO_HOST}" "${MONGO_PORT}" >/dev/null 2>&1; then
-                break
-            fi
-            DBCOUNT=$((DBCOUNT+1))
-            if [[ ${DBCOUNT} -gt 6 ]]; then
-                echo "*** Defined MONGO_HOST ${MONGO_HOST} is not reachable, cannot proceed. ***"
-                sleep infinity
-            fi
-            sleep 5
+        IFS=',' read -r -a hosts_array <<< "$MONGO_HOST"
+        IFS=',' read -r -a ports_array <<< "$MONGO_PORT"
+        if [ "${#ports_array[@]}" -eq 1 ]; then
+            port="${ports_array[0]}"
+            ports_array=()
+            for _ in "${hosts_array[@]}"; do
+                ports_array+=("$port")
+            done
+        fi
+        if [ "${#hosts_array[@]}" -ne "${#ports_array[@]}" ]; then
+            echo "*** The number of MONGO_HOST does not match the number of MONGO_PORT. ***"
+            sleep infinity
+        fi
+        for i in "${!hosts_array[@]}"; do
+            host="${hosts_array[$i]}"
+            port="${ports_array[$i]}"
+            echo "*** Waiting for host ${host}:${port} to be reachable. ***"
+            DBCOUNT=0
+            while true; do
+                if nc -w1 "${host}" "${port}" >/dev/null 2>&1; then
+                    break
+                fi
+                DBCOUNT=$((DBCOUNT+1))
+                if [[ ${DBCOUNT} -gt 6 ]]; then
+                    echo "*** Defined MONGO_HOST ${host} is not reachable, cannot proceed. ***"
+                    sleep infinity
+                fi
+                sleep 5
+            done
         done
+        mongo_hosts=""
+        for i in "${!hosts_array[@]}"; do
+            mongo_hosts+="${hosts_array[$i]}:${ports_array[$i]},"
+        done
+        mongo_hosts="${mongo_hosts%,}"
         sed -i "s/~MONGO_USER~/${MONGO_USER}/" /defaults/system.properties
-        sed -i "s/~MONGO_HOST~/${MONGO_HOST}/" /defaults/system.properties
-        sed -i "s/~MONGO_PORT~/${MONGO_PORT}/" /defaults/system.properties
+        sed -i "s/~MONGO_HOSTS~/${mongo_hosts}/" /defaults/system.properties
         sed -i "s/~MONGO_DBNAME~/${MONGO_DBNAME}/" /defaults/system.properties
         sed -i "s/~MONGO_PASS~/${MONGO_PASS}/" /defaults/system.properties
         if [[ "${MONGO_TLS,,}" = "true" ]]; then
@@ -59,6 +80,15 @@ if [[ ! -e /config/data/system.properties ]]; then
             sed -i "s/~MONGO_AUTHSOURCE~//" /defaults/system.properties
         else
             sed -i "s/~MONGO_AUTHSOURCE~/\&authSource=${MONGO_AUTHSOURCE}/" /defaults/system.properties
+        fi
+        if [[ -z "${MONGO_REPLICA_SET_NAME}" ]]; then
+            sed -i "s/~MONGO_REPLICA_SET_NAME~//" /defaults/system.properties
+        else
+            if [[ "${#hosts_array[@]}" -le 1 ]]; then
+                echo "*** MONGO_REPLICA_SET_NAME is defined but there is only one host in MONGO_HOST. ***"
+                sleep infinity
+            fi
+            sed -i "s/~MONGO_REPLICA_SET_NAME~/\&replicaSet=${MONGO_REPLICA_SET_NAME}/" /defaults/system.properties
         fi
         cp /defaults/system.properties /config/data
     fi
